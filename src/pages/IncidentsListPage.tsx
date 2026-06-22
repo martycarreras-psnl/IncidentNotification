@@ -10,7 +10,7 @@ import {
   Text,
   Spinner,
 } from '@fluentui/react-components';
-import { Add24Regular, Search24Regular, Dismiss20Regular } from '@fluentui/react-icons';
+import { Add24Regular, Search24Regular, Dismiss20Regular, ArrowSortRegular, ArrowSortUp20Regular, ArrowSortDown20Regular } from '@fluentui/react-icons';
 import { PageHeader, Surface, EmptyState } from '@/components/ui/Page';
 import { StatusBadge, SeverityBadge, EscalationBadge } from '@/components/incidents/StatusBadges';
 import { SpecialtyTagChips } from '@/components/incidents/SpecialtyTagChips';
@@ -19,6 +19,7 @@ import { useIncidents, useAllTags, useSpecialties } from '@/hooks/useIncidents';
 import type { IncidentListFilter } from '@/services/data-contracts';
 import type { IncidentSpecialtyTag } from '@/types/domain-models';
 import { formatDate } from '@/utils/format';
+import { sortIncidents, type IncidentSortKey, type SortDir } from '@/utils/incident-sort';
 import {
   investigationStatusLabels,
   investigationStatusOrder,
@@ -48,6 +49,23 @@ const useStyles = makeStyles({
     textTransform: 'uppercase',
     letterSpacing: '0.03em',
     whiteSpace: 'nowrap',
+  },
+  thSortable: {
+    cursor: 'pointer',
+    userSelect: 'none',
+    ':hover': { color: tokens.colorNeutralForeground1 },
+  },
+  thSorted: {
+    color: tokens.colorBrandForeground1,
+  },
+  thInner: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '2px',
+  },
+  sortIcon: {
+    fontSize: '14px',
+    flexShrink: 0,
   },
   td: {
     padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
@@ -80,6 +98,13 @@ export function IncidentsListPage() {
   const [specialtyId, setSpecialtyId] = useState<string | undefined>();
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  // Default sort: most recently created first.
+  const [sort, setSort] = useState<{ key: IncidentSortKey; dir: SortDir }>({ key: 'created', dir: 'desc' });
+
+  const toggleSort = (key: IncidentSortKey) =>
+    setSort((cur) =>
+      cur.key === key ? { key, dir: cur.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
+    );
 
   const filter: IncidentListFilter = useMemo(
     () => ({
@@ -107,7 +132,7 @@ export function IncidentsListPage() {
     return map;
   }, [allTags]);
 
-  // Specialty filter is client-side (tag is a child table).
+  // Specialty filter is client-side (tag is a child table), then sort.
   const rows = useMemo(() => {
     let list = incidents ?? [];
     if (specialtyId) {
@@ -116,8 +141,9 @@ export function IncidentsListPage() {
       );
       list = list.filter((i) => matching.has(i.id));
     }
-    return list;
-  }, [incidents, allTags, specialtyId]);
+    const sorted = sortIncidents(list, sort.key, sort.dir);
+    return sorted;
+  }, [incidents, allTags, specialtyId, sort]);
 
   const hasFilters =
     search || severity || status || escalation || specialtyId || fromDate || toDate;
@@ -254,17 +280,18 @@ export function IncidentsListPage() {
         <Surface padded={false}>
           <Text className={styles.count} size={200} style={{ display: 'block', padding: tokens.spacingHorizontalM }}>
             {rows.length} incident{rows.length === 1 ? '' : 's'}
+            {sort.key === 'created' ? ` · newest first${sort.dir === 'asc' ? ' (oldest)' : ''}` : ''}
           </Text>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th}>Incident</th>
+                <SortableTh label="Incident" sortKey="title" sort={sort} onSort={toggleSort} className={styles.th} sortableClassName={styles.thSortable} sortedClassName={styles.thSorted} innerClassName={styles.thInner} iconClassName={styles.sortIcon} />
                 <th className={styles.th}>Specialty</th>
-                <th className={styles.th}>Severity</th>
-                <th className={styles.th}>Status</th>
-                <th className={styles.th}>Esc.</th>
-                <th className={styles.th}>Mandatory report</th>
-                <th className={styles.th}>Event date</th>
+                <SortableTh label="Severity" sortKey="severity" sort={sort} onSort={toggleSort} className={styles.th} sortableClassName={styles.thSortable} sortedClassName={styles.thSorted} innerClassName={styles.thInner} iconClassName={styles.sortIcon} />
+                <SortableTh label="Status" sortKey="status" sort={sort} onSort={toggleSort} className={styles.th} sortableClassName={styles.thSortable} sortedClassName={styles.thSorted} innerClassName={styles.thInner} iconClassName={styles.sortIcon} />
+                <SortableTh label="Esc." sortKey="escalation" sort={sort} onSort={toggleSort} className={styles.th} sortableClassName={styles.thSortable} sortedClassName={styles.thSorted} innerClassName={styles.thInner} iconClassName={styles.sortIcon} />
+                <SortableTh label="Mandatory report" sortKey="mandatory" sort={sort} onSort={toggleSort} className={styles.th} sortableClassName={styles.thSortable} sortedClassName={styles.thSorted} innerClassName={styles.thInner} iconClassName={styles.sortIcon} />
+                <SortableTh label="Event date" sortKey="event" sort={sort} onSort={toggleSort} className={styles.th} sortableClassName={styles.thSortable} sortedClassName={styles.thSorted} innerClassName={styles.thInner} iconClassName={styles.sortIcon} />
               </tr>
             </thead>
             <tbody>
@@ -299,5 +326,51 @@ export function IncidentsListPage() {
         </Surface>
       )}
     </div>
+  );
+}
+
+// ── sorting ──
+
+function SortableTh({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  className,
+  sortableClassName,
+  sortedClassName,
+  innerClassName,
+  iconClassName,
+}: {
+  label: string;
+  sortKey: IncidentSortKey;
+  sort: { key: IncidentSortKey; dir: SortDir };
+  onSort: (key: IncidentSortKey) => void;
+  className: string;
+  sortableClassName: string;
+  sortedClassName: string;
+  innerClassName: string;
+  iconClassName: string;
+}) {
+  const active = sort.key === sortKey;
+  const icon = !active ? (
+    <ArrowSortRegular className={iconClassName} />
+  ) : sort.dir === 'asc' ? (
+    <ArrowSortUp20Regular className={iconClassName} />
+  ) : (
+    <ArrowSortDown20Regular className={iconClassName} />
+  );
+  return (
+    <th
+      className={`${className} ${sortableClassName} ${active ? sortedClassName : ''}`}
+      onClick={() => onSort(sortKey)}
+      aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      role="columnheader"
+    >
+      <span className={innerClassName}>
+        {label}
+        {icon}
+      </span>
+    </th>
   );
 }
