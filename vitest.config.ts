@@ -5,13 +5,20 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
+    alias: {
+      // The Power Apps SDK has a broken ESM subpath that vitest cannot resolve.
+      // Tests run in mock mode, so stub the data client entry points.
+      '@microsoft/power-apps/data/metadata/dataverse': path.resolve(__dirname, './tests/stubs/power-apps-data.ts'),
+      '@microsoft/power-apps/data': path.resolve(__dirname, './tests/stubs/power-apps-data.ts'),
+      '@': path.resolve(__dirname, './src'),
+    },
   },
   test: {
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./tests/setup/setup.ts'],
     css: true,
+    env: { VITE_USE_MOCK: 'true' },
     include: ['src/**/*.test.{ts,tsx}', 'tests/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',

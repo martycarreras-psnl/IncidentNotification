@@ -11,7 +11,8 @@
     "concurrently": "^9.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.1.0"
+    "react-router-dom": "^7.1.0",
+    "recharts": "^2.15.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
@@ -38,7 +39,8 @@
     "dev:local": "VITE_USE_MOCK=true vite --port 3000",
     "prototype:seed": "pacaf-seed dataverse/planning-payload.json",
     "typecheck": "tsc --noEmit",
-    "prebuild": "pacaf-patch-datasources",
+    "fix:generated": "node scripts/fix-generated-identifiers.mjs",
+    "prebuild": "pacaf-patch-datasources && node scripts/fix-generated-identifiers.mjs",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
     "lint": "eslint src/ --max-warnings 0",

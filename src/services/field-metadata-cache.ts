@@ -37,9 +37,18 @@ interface MetadataServiceEntry {
 // Register each table's generated service here after pac code add-data-source.
 // Without an entry, metadata lookups for that table return null (no asterisks,
 // no maxLength, no min/max).
+import { Msftirma_incidentsService } from '@/generated/services/Msftirma_incidentsService';
+import { Msftirma_incidentspecialtytagsService } from '@/generated/services/Msftirma_incidentspecialtytagsService';
+import { Msftirma_remediationactionsService } from '@/generated/services/Msftirma_remediationactionsService';
+import { Msftirma_investigationactivitiesService } from '@/generated/services/Msftirma_investigationactivitiesService';
+import { Msftirma_specialtiesService } from '@/generated/services/Msftirma_specialtiesService';
+
 export const metadataServiceRegistry: Record<string, MetadataServiceEntry> = {
-  // Example after registering msfttrp_trips:
-  // msfttrp_trips: Msfttrp_tripsService as unknown as MetadataServiceEntry,
+  msftirma_incident: Msftirma_incidentsService as unknown as MetadataServiceEntry,
+  msftirma_incidentspecialtytag: Msftirma_incidentspecialtytagsService as unknown as MetadataServiceEntry,
+  msftirma_remediationaction: Msftirma_remediationactionsService as unknown as MetadataServiceEntry,
+  msftirma_investigationactivity: Msftirma_investigationactivitiesService as unknown as MetadataServiceEntry,
+  msftirma_specialty: Msftirma_specialtiesService as unknown as MetadataServiceEntry,
 };
 
 const tableMetadataCache = new Map<string, Promise<Map<string, DataverseFieldMetadata>>>();

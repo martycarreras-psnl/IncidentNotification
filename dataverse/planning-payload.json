@@ -1,120 +1,415 @@
 {
+  "$comment": "IRMA — Incident Report Management App. Source of truth for the Dataverse schema (handoff §4). Authored in P1; provisioned with the dv-metadata skill in P2. Publisher prefix msftirma_ (ADR-0001). All tables UserOwned (ADR-0002). EAV detail table (ADR-0003). Reporter identified via systemuser lookup (ADR-0005).",
+  "solution": {
+    "uniqueName": "IRMA",
+    "displayName": "IRMA",
+    "publisherPrefix": "msftirma",
+    "environmentUrl": "https://carremacodeapps.crm.dynamics.com"
+  },
   "domains": [
     {
-      "name": "Project Intake",
-      "description": "Business language and boundaries for the app"
+      "name": "Incident Management",
+      "description": "Safety-incident intake (via the IRMA Copilot Studio agent) and the investigation lifecycle the safety team drives in this app."
     }
   ],
-  "tables": [
+
+  "globalOptionSets": [
     {
-      "schemaName": "msftirma_ProjectRequest",
-      "displayName": "Project Request",
-      "displayCollectionName": "Project Requests",
-      "logicalSingularName": "msftirma_projectrequest",
-      "logicalPluralName": "msftirma_projectrequests",
-      "entitySetName": "msftirma_projectrequests",
-      "tableLogicalName": "msftirma_projectrequests",
-      "description": "Tracks incoming requests for work",
-      "ownership": "UserOwned",
-      "ownershipType": "UserOwned",
-      "isActivity": false,
-      "hasActivities": false,
-      "hasNotes": true,
-      "primaryName": {
-        "schemaName": "msftirma_ProjectRequestName",
-        "displayName": "Name",
-        "description": "Primary name for the request",
-        "maxLength": 100
-      },
-      "columns": [
-        {
-          "schemaName": "msftirma_requeststatus",
-          "displayName": "Request Status",
-          "logicalName": "msftirma_requeststatus",
-          "type": "Picklist",
-          "globalOptionSetName": "msftirma_requeststatus",
-          "requiredLevel": "ApplicationRequired"
-        },
-        {
-          "schemaName": "msftirma_requestedon",
-          "displayName": "Requested On",
-          "logicalName": "msftirma_requestedon",
-          "type": "DateTime",
-          "format": "DateOnly",
-          "requiredLevel": "None"
-        }
-      ],
-      "attributes": [
-        {
-          "schemaName": "msftirma_requeststatus",
-          "displayName": "Request Status",
-          "type": "Picklist",
-          "globalOptionSetName": "msftirma_requeststatus",
-          "requiredLevel": "ApplicationRequired"
-        },
-        {
-          "schemaName": "msftirma_requestedon",
-          "displayName": "Requested On",
-          "type": "DateTime",
-          "format": "DateOnly",
-          "requiredLevel": "None"
-        }
+      "name": "msftirma_investigationstatus",
+      "displayName": "Investigation Status",
+      "description": "The investigation lifecycle the safety team drives (handoff D4).",
+      "options": [
+        { "label": "Submitted", "value": 1 },
+        { "label": "Triaged", "value": 2 },
+        { "label": "Under Investigation", "value": 3 },
+        { "label": "Pending Review", "value": 4 },
+        { "label": "SSE Committee", "value": 5 },
+        { "label": "Remediation", "value": 6 },
+        { "label": "Closed", "value": 7 }
+      ]
+    },
+    {
+      "name": "msftirma_severitylevel",
+      "displayName": "Severity Level",
+      "description": "Harm/severity scale 1-5 (taxonomy). Value equals the level number for clean Pareto math.",
+      "options": [
+        { "label": "1 — Near miss", "value": 1 },
+        { "label": "2 — Minor / temporary", "value": 2 },
+        { "label": "3 — Moderate / temporary", "value": 3 },
+        { "label": "4 — Severe", "value": 4 },
+        { "label": "5 — Sentinel / SSE", "value": 5 }
+      ]
+    },
+    {
+      "name": "msftirma_escalationpath",
+      "displayName": "Escalation Path",
+      "description": "Escalation-path keys S1-S5 (taxonomy). Value equals the path number.",
+      "options": [
+        { "label": "S1", "value": 1 },
+        { "label": "S2", "value": 2 },
+        { "label": "S3", "value": 3 },
+        { "label": "S4", "value": 4 },
+        { "label": "S5", "value": 5 }
+      ]
+    },
+    {
+      "name": "msftirma_sourcemodality",
+      "displayName": "Source Modality",
+      "description": "How the incident was captured by the intake agent.",
+      "options": [
+        { "label": "Voice", "value": 1 },
+        { "label": "Mobile", "value": 2 },
+        { "label": "Web", "value": 3 },
+        { "label": "Epic launch", "value": 4 }
+      ]
+    },
+    {
+      "name": "msftirma_reachedpatient",
+      "displayName": "Reached Patient",
+      "description": "Whether the event reached the patient (severity input).",
+      "options": [
+        { "label": "Reached — harm", "value": 1 },
+        { "label": "Reached — no harm", "value": 2 },
+        { "label": "Near miss", "value": 3 },
+        { "label": "Unknown", "value": 4 }
+      ]
+    },
+    {
+      "name": "msftirma_harmobserved",
+      "displayName": "Harm Observed",
+      "description": "Degree of harm observed.",
+      "options": [
+        { "label": "None", "value": 1 },
+        { "label": "Minor", "value": 2 },
+        { "label": "Moderate", "value": 3 },
+        { "label": "Severe", "value": 4 },
+        { "label": "Death", "value": 5 },
+        { "label": "Unknown", "value": 6 }
+      ]
+    },
+    {
+      "name": "msftirma_ageband",
+      "displayName": "Age Band",
+      "description": "Patient age band (drives vulnerability).",
+      "options": [
+        { "label": "Neonate", "value": 1 },
+        { "label": "Infant", "value": 2 },
+        { "label": "Child", "value": 3 },
+        { "label": "Adolescent", "value": 4 },
+        { "label": "N/A", "value": 5 }
+      ]
+    },
+    {
+      "name": "msftirma_tagrole",
+      "displayName": "Tag Role",
+      "description": "Whether a specialty tag is the primary or a secondary tag on an incident.",
+      "options": [
+        { "label": "Primary", "value": 1 },
+        { "label": "Secondary", "value": 2 }
+      ]
+    },
+    {
+      "name": "msftirma_provenance",
+      "displayName": "Provenance",
+      "description": "Origin of a value: AI (AI-extracted/recommended), Submitter (human), or Epic (launch context). Used by severitysource, tag source, and EAV detail source.",
+      "options": [
+        { "label": "AI", "value": 1 },
+        { "label": "Submitter", "value": 2 },
+        { "label": "Epic", "value": 3 }
+      ]
+    },
+    {
+      "name": "msftirma_questionmode",
+      "displayName": "Question Mode",
+      "description": "Whether the agent ran the minimal or thorough ask-once pass.",
+      "options": [
+        { "label": "Minimal", "value": 1 },
+        { "label": "Thorough", "value": 2 }
+      ]
+    },
+    {
+      "name": "msftirma_remediationstatus",
+      "displayName": "Remediation Status",
+      "description": "Lifecycle of a remediation action.",
+      "options": [
+        { "label": "Open", "value": 1 },
+        { "label": "In Progress", "value": 2 },
+        { "label": "Done", "value": 3 }
+      ]
+    },
+    {
+      "name": "msftirma_activitytype",
+      "displayName": "Activity Type",
+      "description": "Type of investigation-timeline activity.",
+      "options": [
+        { "label": "Note", "value": 1 },
+        { "label": "Status Change", "value": 2 },
+        { "label": "Assignment", "value": 3 },
+        { "label": "Reporter Contact", "value": 4 },
+        { "label": "Review", "value": 5 },
+        { "label": "Escalation", "value": 6 },
+        { "label": "Re-classification", "value": 7 }
+      ]
+    },
+    {
+      "name": "msftirma_sseoutcome",
+      "displayName": "SSE Outcome",
+      "description": "Outcome of the SSE Committee review.",
+      "options": [
+        { "label": "Pending Review", "value": 1 },
+        { "label": "Confirmed SSE", "value": 2 },
+        { "label": "Not an SSE", "value": 3 },
+        { "label": "Great Catch", "value": 4 }
       ]
     }
   ],
+
+  "tables": [
+    {
+      "schemaName": "msftirma_Incident",
+      "displayName": "Incident",
+      "displayCollectionName": "Incidents",
+      "logicalName": "msftirma_incident",
+      "description": "A reported safety incident. Intake fields are written by the IRMA agent; investigation fields are managed by the safety team in this app.",
+      "ownership": "UserOwned",
+      "hasActivities": false,
+      "hasNotes": true,
+      "primaryName": {
+        "schemaName": "msftirma_Name",
+        "displayName": "Title",
+        "description": "Short human-readable title/summary of the incident.",
+        "maxLength": 200,
+        "requiredLevel": "None"
+      },
+      "columns": [
+        { "schemaName": "msftirma_SourceModality", "displayName": "Source Modality", "type": "Picklist", "globalOptionSetName": "msftirma_sourcemodality", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_Status", "displayName": "Status", "type": "Picklist", "localOptionSet": { "name": "msftirma_incidentstatus", "options": [ { "label": "Draft", "value": 1 }, { "label": "Submitted", "value": 2 } ] }, "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_Narrative", "displayName": "Narrative", "type": "Memo", "maxLength": 8000, "requiredLevel": "ApplicationRequired", "owner": "agent" },
+        { "schemaName": "msftirma_ReporterRole", "displayName": "Reporter Role", "type": "String", "maxLength": 200, "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_WantsFeedback", "displayName": "Wants Feedback", "type": "Boolean", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_PatientInvolved", "displayName": "Patient Involved", "type": "Boolean", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_Mrn", "displayName": "MRN", "type": "String", "maxLength": 100, "requiredLevel": "None", "owner": "agent", "columnSecurity": true, "$comment": "PHI — secured with column-level security (handoff §4)." },
+        { "schemaName": "msftirma_EncounterId", "displayName": "Encounter ID", "type": "String", "maxLength": 100, "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_AgeBand", "displayName": "Age Band", "type": "Picklist", "globalOptionSetName": "msftirma_ageband", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_Location", "displayName": "Location", "type": "String", "maxLength": 200, "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_EventDateTime", "displayName": "Event Date/Time", "type": "DateTime", "format": "DateAndTime", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_ReachedPatient", "displayName": "Reached Patient", "type": "Picklist", "globalOptionSetName": "msftirma_reachedpatient", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_HarmObserved", "displayName": "Harm Observed", "type": "Picklist", "globalOptionSetName": "msftirma_harmobserved", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_ImmediateActions", "displayName": "Immediate Actions", "type": "Memo", "maxLength": 4000, "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_OngoingHazard", "displayName": "Ongoing Hazard", "type": "Boolean", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_OngoingHazardDetail", "displayName": "Ongoing Hazard Detail", "type": "String", "maxLength": 2000, "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_SeverityLevel", "displayName": "Severity Level", "type": "Picklist", "globalOptionSetName": "msftirma_severitylevel", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_SeveritySource", "displayName": "Severity Source", "type": "Picklist", "globalOptionSetName": "msftirma_provenance", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_SeverityRationale", "displayName": "Severity Rationale", "type": "Memo", "maxLength": 4000, "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_EscalationPath", "displayName": "Escalation Path", "type": "Picklist", "globalOptionSetName": "msftirma_escalationpath", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_ExtReportRequired", "displayName": "External Report Required", "type": "Boolean", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_ExtReportType", "displayName": "External Report Type", "type": "String", "maxLength": 200, "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_ExtReportClockHrs", "displayName": "External Report Clock (hrs)", "type": "Integer", "minValue": 0, "maxValue": 720, "requiredLevel": "None", "owner": "agent", "$comment": "Drives the mandatory-report 24-hr countdown (handoff D13)." },
+        { "schemaName": "msftirma_FollowupCount", "displayName": "Follow-up Count", "type": "Integer", "minValue": 0, "maxValue": 100, "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_Mode", "displayName": "Question Mode", "type": "Picklist", "globalOptionSetName": "msftirma_questionmode", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_AiRecommended", "displayName": "AI Recommended", "type": "Boolean", "requiredLevel": "None", "owner": "agent" },
+        { "schemaName": "msftirma_HumanConfirmed", "displayName": "Human Confirmed", "type": "Boolean", "requiredLevel": "None", "owner": "agent" },
+
+        { "schemaName": "msftirma_InvestigationStatus", "displayName": "Investigation Status", "type": "Picklist", "globalOptionSetName": "msftirma_investigationstatus", "requiredLevel": "ApplicationRequired", "defaultValue": 1, "owner": "app" },
+        { "schemaName": "msftirma_Reporter", "displayName": "Reporter", "type": "Lookup", "targetTable": "systemuser", "requiredLevel": "None", "owner": "app", "$comment": "Identified reporter (ADR-0005, reverses agent de-identification)." },
+        { "schemaName": "msftirma_AssignedTo", "displayName": "Assigned To", "type": "Lookup", "targetTable": "systemuser", "requiredLevel": "None", "owner": "app" },
+        { "schemaName": "msftirma_RoutingOwner", "displayName": "Routing Owner", "type": "Lookup", "targetTable": "systemuser", "requiredLevel": "None", "owner": "app" },
+        { "schemaName": "msftirma_TriagedOn", "displayName": "Triaged On", "type": "DateTime", "format": "DateAndTime", "requiredLevel": "None", "owner": "app" },
+        { "schemaName": "msftirma_InvestigationStartedOn", "displayName": "Investigation Started On", "type": "DateTime", "format": "DateAndTime", "requiredLevel": "None", "owner": "app" },
+        { "schemaName": "msftirma_ClosedOn", "displayName": "Closed On", "type": "DateTime", "format": "DateAndTime", "requiredLevel": "None", "owner": "app" },
+        { "schemaName": "msftirma_RootCause", "displayName": "Root Cause", "type": "Memo", "maxLength": 8000, "requiredLevel": "None", "owner": "app" },
+        { "schemaName": "msftirma_SseSuggested", "displayName": "SSE Suggested", "type": "Boolean", "requiredLevel": "None", "owner": "app", "$comment": "Set by the D12 rule (severity 5 OR never-event/mandatory flag)." },
+        { "schemaName": "msftirma_SseReview", "displayName": "SSE Review", "type": "Boolean", "requiredLevel": "None", "owner": "app", "$comment": "Manual reviewer confirmation of the SSE track (D12)." },
+        { "schemaName": "msftirma_SseOutcome", "displayName": "SSE Outcome", "type": "Picklist", "globalOptionSetName": "msftirma_sseoutcome", "requiredLevel": "None", "owner": "app" },
+        { "schemaName": "msftirma_ServiceNowRef", "displayName": "ServiceNow Ref", "type": "String", "maxLength": 100, "requiredLevel": "None", "owner": "app" },
+        { "schemaName": "msftirma_ReporterFeedbackSent", "displayName": "Reporter Feedback Sent", "type": "Boolean", "requiredLevel": "None", "owner": "app" },
+        { "schemaName": "msftirma_ReporterFeedbackText", "displayName": "Reporter Feedback Text", "type": "Memo", "maxLength": 4000, "requiredLevel": "None", "owner": "app" },
+        { "schemaName": "msftirma_FeedbackSentOn", "displayName": "Feedback Sent On", "type": "DateTime", "format": "DateAndTime", "requiredLevel": "None", "owner": "app" }
+      ]
+    },
+    {
+      "schemaName": "msftirma_Specialty",
+      "displayName": "Specialty",
+      "displayCollectionName": "Specialties",
+      "logicalName": "msftirma_specialty",
+      "description": "Reference table of the 32 clinical specialty / service-line tags, with owner team, reportable flag, suggested routing path, and Teams channel. Seeded from the routing taxonomy (handoff §4.5). Shared canonical list for the agent, the routing matrix, and this app.",
+      "ownership": "UserOwned",
+      "hasActivities": false,
+      "hasNotes": false,
+      "primaryName": {
+        "schemaName": "msftirma_Name",
+        "displayName": "Specialty Name",
+        "description": "Display name of the specialty tag (e.g. \"Pharmacy / Medication\").",
+        "maxLength": 200,
+        "requiredLevel": "ApplicationRequired"
+      },
+      "columns": [
+        { "schemaName": "msftirma_TagKey", "displayName": "Tag Key", "type": "String", "maxLength": 100, "requiredLevel": "None", "$comment": "Stable slug, e.g. medication, laboratory-pathology — matches the agent module file." },
+        { "schemaName": "msftirma_OwningTeam", "displayName": "Owning Team", "type": "String", "maxLength": 200, "requiredLevel": "None", "$comment": "Routing owner team name, e.g. \"Pharmacy / Med Safety\"." },
+        { "schemaName": "msftirma_Reportable", "displayName": "Externally Reportable", "type": "Picklist", "localOptionSet": { "name": "msftirma_reportablestatus", "options": [ { "label": "No", "value": 1 }, { "label": "Conditional", "value": 2 }, { "label": "Yes", "value": 3 } ] }, "requiredLevel": "None" },
+        { "schemaName": "msftirma_SuggestedPath", "displayName": "Suggested Escalation Path", "type": "Picklist", "globalOptionSetName": "msftirma_escalationpath", "requiredLevel": "None" },
+        { "schemaName": "msftirma_TeamsChannel", "displayName": "Teams Channel", "type": "String", "maxLength": 200, "requiredLevel": "None" },
+        { "schemaName": "msftirma_Domain", "displayName": "Domain", "type": "String", "maxLength": 200, "requiredLevel": "None" },
+        { "schemaName": "msftirma_SortOrder", "displayName": "Sort Order", "type": "Integer", "minValue": 0, "maxValue": 999, "requiredLevel": "None" },
+        { "schemaName": "msftirma_Active", "displayName": "Active", "type": "Boolean", "requiredLevel": "None", "defaultValue": true }
+      ]
+    },
+    {
+      "schemaName": "msftirma_IncidentSpecialtyTag",
+      "displayName": "Incident Specialty Tag",
+      "displayCollectionName": "Incident Specialty Tags",
+      "logicalName": "msftirma_incidentspecialtytag",
+      "description": "A detected/confirmed specialty tag on an incident. Editable post-submit with audit (handoff D9).",
+      "ownership": "UserOwned",
+      "hasActivities": false,
+      "hasNotes": false,
+      "primaryName": {
+        "schemaName": "msftirma_Name",
+        "displayName": "Name",
+        "description": "Auto/derived label (e.g. \"<Incident> — <Tag>\").",
+        "maxLength": 300,
+        "requiredLevel": "None"
+      },
+      "columns": [
+        { "schemaName": "msftirma_Incident", "displayName": "Incident", "type": "Lookup", "targetTable": "msftirma_incident", "requiredLevel": "ApplicationRequired", "parent": true },
+        { "schemaName": "msftirma_Tag", "displayName": "Tag", "type": "Lookup", "targetTable": "msftirma_specialty", "requiredLevel": "None" },
+        { "schemaName": "msftirma_Role", "displayName": "Role", "type": "Picklist", "globalOptionSetName": "msftirma_tagrole", "requiredLevel": "None" },
+        { "schemaName": "msftirma_Confidence", "displayName": "Confidence", "type": "Decimal", "minValue": 0, "maxValue": 1, "precision": 2, "requiredLevel": "None" },
+        { "schemaName": "msftirma_Source", "displayName": "Source", "type": "Picklist", "globalOptionSetName": "msftirma_provenance", "requiredLevel": "None" },
+        { "schemaName": "msftirma_Evidence", "displayName": "Evidence", "type": "Memo", "maxLength": 2000, "requiredLevel": "None" }
+      ]
+    },
+    {
+      "schemaName": "msftirma_IncidentDetail",
+      "displayName": "Incident Detail",
+      "displayCollectionName": "Incident Details",
+      "logicalName": "msftirma_incidentdetail",
+      "description": "EAV row for a variable, per-specialty collected fact. Avoids a column-per-specialty explosion (ADR-0003).",
+      "ownership": "UserOwned",
+      "hasActivities": false,
+      "hasNotes": false,
+      "primaryName": {
+        "schemaName": "msftirma_Name",
+        "displayName": "Field ID",
+        "description": "The canonical field_id (also stored in FieldId for querying).",
+        "maxLength": 200,
+        "requiredLevel": "None"
+      },
+      "columns": [
+        { "schemaName": "msftirma_Incident", "displayName": "Incident", "type": "Lookup", "targetTable": "msftirma_incident", "requiredLevel": "ApplicationRequired", "parent": true },
+        { "schemaName": "msftirma_FieldId", "displayName": "Field ID", "type": "String", "maxLength": 200, "requiredLevel": "ApplicationRequired" },
+        { "schemaName": "msftirma_FieldValue", "displayName": "Field Value", "type": "Memo", "maxLength": 8000, "requiredLevel": "None" },
+        { "schemaName": "msftirma_Specialty", "displayName": "Specialty", "type": "String", "maxLength": 100, "requiredLevel": "None", "$comment": "Owning tag, or \"core\"/\"shared\"." },
+        { "schemaName": "msftirma_Tier", "displayName": "Tier", "type": "Integer", "minValue": 1, "maxValue": 2, "requiredLevel": "None" },
+        { "schemaName": "msftirma_Source", "displayName": "Source", "type": "Picklist", "globalOptionSetName": "msftirma_provenance", "requiredLevel": "None" }
+      ]
+    },
+    {
+      "schemaName": "msftirma_IncidentAudit",
+      "displayName": "Incident Audit",
+      "displayCollectionName": "Incident Audits",
+      "logicalName": "msftirma_incidentaudit",
+      "description": "An audit row capturing a value change — both submitter overrides of AI values and investigator re-classifications (handoff D9).",
+      "ownership": "UserOwned",
+      "hasActivities": false,
+      "hasNotes": false,
+      "primaryName": {
+        "schemaName": "msftirma_Name",
+        "displayName": "Name",
+        "description": "Auto/derived label for the audit row.",
+        "maxLength": 300,
+        "requiredLevel": "None"
+      },
+      "columns": [
+        { "schemaName": "msftirma_Incident", "displayName": "Incident", "type": "Lookup", "targetTable": "msftirma_incident", "requiredLevel": "ApplicationRequired", "parent": true },
+        { "schemaName": "msftirma_Path", "displayName": "Path", "type": "String", "maxLength": 200, "requiredLevel": "None", "$comment": "Changed field path, e.g. severity.level or specialty_tags[0].role." },
+        { "schemaName": "msftirma_FromValue", "displayName": "From Value", "type": "Memo", "maxLength": 2000, "requiredLevel": "None" },
+        { "schemaName": "msftirma_ToValue", "displayName": "To Value", "type": "Memo", "maxLength": 2000, "requiredLevel": "None" },
+        { "schemaName": "msftirma_Author", "displayName": "Author", "type": "Lookup", "targetTable": "systemuser", "requiredLevel": "None" },
+        { "schemaName": "msftirma_OccurredOn", "displayName": "Occurred On", "type": "DateTime", "format": "DateAndTime", "requiredLevel": "None" }
+      ]
+    },
+    {
+      "schemaName": "msftirma_InvestigationActivity",
+      "displayName": "Investigation Activity",
+      "displayCollectionName": "Investigation Activities",
+      "logicalName": "msftirma_investigationactivity",
+      "description": "A timeline activity on an incident investigation. Powers the detail-page timeline and pace metrics (handoff §4.6).",
+      "ownership": "UserOwned",
+      "hasActivities": false,
+      "hasNotes": false,
+      "primaryName": {
+        "schemaName": "msftirma_Name",
+        "displayName": "Activity",
+        "description": "Short label for the activity.",
+        "maxLength": 300,
+        "requiredLevel": "None"
+      },
+      "columns": [
+        { "schemaName": "msftirma_Incident", "displayName": "Incident", "type": "Lookup", "targetTable": "msftirma_incident", "requiredLevel": "ApplicationRequired", "parent": true },
+        { "schemaName": "msftirma_ActivityType", "displayName": "Activity Type", "type": "Picklist", "globalOptionSetName": "msftirma_activitytype", "requiredLevel": "None" },
+        { "schemaName": "msftirma_Note", "displayName": "Note", "type": "Memo", "maxLength": 8000, "requiredLevel": "None" },
+        { "schemaName": "msftirma_Author", "displayName": "Author", "type": "Lookup", "targetTable": "systemuser", "requiredLevel": "None" },
+        { "schemaName": "msftirma_OccurredOn", "displayName": "Occurred On", "type": "DateTime", "format": "DateAndTime", "requiredLevel": "None" }
+      ]
+    },
+    {
+      "schemaName": "msftirma_RemediationAction",
+      "displayName": "Remediation Action",
+      "displayCollectionName": "Remediation Actions",
+      "logicalName": "msftirma_remediationaction",
+      "description": "A remediation action tracked against an incident (handoff §4.7).",
+      "ownership": "UserOwned",
+      "hasActivities": false,
+      "hasNotes": false,
+      "primaryName": {
+        "schemaName": "msftirma_Name",
+        "displayName": "Action",
+        "description": "Short title for the remediation action.",
+        "maxLength": 300,
+        "requiredLevel": "None"
+      },
+      "columns": [
+        { "schemaName": "msftirma_Incident", "displayName": "Incident", "type": "Lookup", "targetTable": "msftirma_incident", "requiredLevel": "ApplicationRequired", "parent": true },
+        { "schemaName": "msftirma_Description", "displayName": "Description", "type": "Memo", "maxLength": 4000, "requiredLevel": "ApplicationRequired" },
+        { "schemaName": "msftirma_ActionOwner", "displayName": "Owner", "type": "Lookup", "targetTable": "systemuser", "requiredLevel": "None" },
+        { "schemaName": "msftirma_DueDate", "displayName": "Due Date", "type": "DateTime", "format": "DateOnly", "requiredLevel": "None" },
+        { "schemaName": "msftirma_Status", "displayName": "Status", "type": "Picklist", "globalOptionSetName": "msftirma_remediationstatus", "requiredLevel": "None", "defaultValue": 1 },
+        { "schemaName": "msftirma_CompletedOn", "displayName": "Completed On", "type": "DateTime", "format": "DateAndTime", "requiredLevel": "None" }
+      ]
+    }
+  ],
+
   "relationships": [
-    {
-      "type": "ManyToOne",
-      "fromTable": "msftirma_projectrequests",
-      "toTable": "msftirma_departments",
-      "referencingEntity": "msftirma_projectrequests",
-      "referencedEntity": "msftirma_departments",
-      "schemaName": "msftirma_ProjectRequest_Department",
-      "lookupSchemaName": "msftirma_DepartmentId",
-      "lookupDisplayName": "Department"
-    }
+    { "type": "ManyToOne", "referencingEntity": "msftirma_incidentspecialtytag", "referencedEntity": "msftirma_incident", "lookupSchemaName": "msftirma_Incident", "lookupDisplayName": "Incident", "cascade": "parental" },
+    { "type": "ManyToOne", "referencingEntity": "msftirma_incidentspecialtytag", "referencedEntity": "msftirma_specialty", "lookupSchemaName": "msftirma_Tag", "lookupDisplayName": "Tag", "cascade": "removelink" },
+    { "type": "ManyToOne", "referencingEntity": "msftirma_incidentdetail", "referencedEntity": "msftirma_incident", "lookupSchemaName": "msftirma_Incident", "lookupDisplayName": "Incident", "cascade": "parental" },
+    { "type": "ManyToOne", "referencingEntity": "msftirma_incidentaudit", "referencedEntity": "msftirma_incident", "lookupSchemaName": "msftirma_Incident", "lookupDisplayName": "Incident", "cascade": "parental" },
+    { "type": "ManyToOne", "referencingEntity": "msftirma_investigationactivity", "referencedEntity": "msftirma_incident", "lookupSchemaName": "msftirma_Incident", "lookupDisplayName": "Incident", "cascade": "parental" },
+    { "type": "ManyToOne", "referencingEntity": "msftirma_remediationaction", "referencedEntity": "msftirma_incident", "lookupSchemaName": "msftirma_Incident", "lookupDisplayName": "Incident", "cascade": "parental" },
+    { "type": "ManyToOne", "referencingEntity": "msftirma_incident", "referencedEntity": "systemuser", "lookupSchemaName": "msftirma_Reporter", "lookupDisplayName": "Reporter", "cascade": "removelink" },
+    { "type": "ManyToOne", "referencingEntity": "msftirma_incident", "referencedEntity": "systemuser", "lookupSchemaName": "msftirma_AssignedTo", "lookupDisplayName": "Assigned To", "cascade": "removelink" },
+    { "type": "ManyToOne", "referencingEntity": "msftirma_incident", "referencedEntity": "systemuser", "lookupSchemaName": "msftirma_RoutingOwner", "lookupDisplayName": "Routing Owner", "cascade": "removelink" },
+    { "type": "ManyToOne", "referencingEntity": "msftirma_incidentaudit", "referencedEntity": "systemuser", "lookupSchemaName": "msftirma_Author", "lookupDisplayName": "Author", "cascade": "removelink" },
+    { "type": "ManyToOne", "referencingEntity": "msftirma_investigationactivity", "referencedEntity": "systemuser", "lookupSchemaName": "msftirma_Author", "lookupDisplayName": "Author", "cascade": "removelink" },
+    { "type": "ManyToOne", "referencingEntity": "msftirma_remediationaction", "referencedEntity": "systemuser", "lookupSchemaName": "msftirma_ActionOwner", "lookupDisplayName": "Owner", "cascade": "removelink" }
   ],
-  "provisioningPlansJson": [
-    {
-      "path": "dataverse/provision-tables.plan.json",
-      "purpose": "Create or update tables and columns after review"
-    },
-    {
-      "path": "dataverse/provision-relationships.plan.json",
-      "purpose": "Apply relationship changes after table provisioning"
-    },
-    {
-      "path": "dataverse/register-datasources.plan.json",
-      "purpose": "Register Dataverse tables with pac code add-data-source and regenerate the SDK"
-    }
+
+  "columnSecurity": [
+    { "table": "msftirma_incident", "column": "msftirma_mrn", "reason": "PHI — patient MRN. Safety events are legally protected (handoff §4)." }
   ],
+
+  "seed": {
+    "specialtyTagCount": 32,
+    "sampleIncidentCount": "30-50",
+    "notes": "Seed msftirma_specialty with the 32 tags (owner/reportable/suggested-path/Teams-channel from the parsed taxonomy in session memory), then ~30-50 sample incidents with child specialty-tag and detail rows for dashboard/list dev (handoff D8)."
+  },
+
   "orgStructure": {
-    "businessUnits": [
-      { "name": "Field Operations", "parentName": null },
-      { "name": "West Region", "parentName": "Field Operations" }
-    ],
-    "securityGroups": [
-      {
-        "displayName": "Field Operations - West",
-        "mailNickname": "field-ops-west",
-        "entraObjectId": null
-      }
-    ],
-    "teams": [
-      {
-        "name": "Field Operations - West",
-        "businessUnitName": "West Region",
-        "teamType": "Owner",
-        "membershipSource": "EntraGroup",
-        "securityGroupDisplayName": "Field Operations - West"
-      }
-    ],
-    "roleMappings": [
-      {
-        "teamName": "Field Operations - West",
-        "roleName": "Project Tracker Collaborator",
-        "scope": "BusinessUnit"
-      }
-    ]
+    "$comment": "v1 visibility is open to the safety team (ADR-0002). Tables are UserOwned so BU/owner-team security can be layered later without a rebuild. No business units / owner teams / role mappings are provisioned in v1.",
+    "businessUnits": [],
+    "securityGroups": [],
+    "teams": [],
+    "roleMappings": []
   }
 }

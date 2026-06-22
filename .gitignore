@@ -34,3 +34,8 @@ solution/*.zip
 # Temp
 *.tmp
 *.log
+.env
+.venv/
+__pycache__/
+*.pyc
+.token_cache.bin

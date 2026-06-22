@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "appId": null,
+  "appId": "092fdd53-80fb-4d56-a0fa-b2bc99c0286b",
   "appDisplayName": "IRMA",
   "region": "prod",
   "environmentId": "f9b87f8b-0abf-e629-affb-b13195d1ed14",
@@ -9,6 +9,53 @@
   "buildEntryPoint": "index.html",
   "localAppUrl": "http://localhost:3000",
   "logoPath": "Default",
-  "connectionReferences": {},
-  "databaseReferences": {}
+  "connectionReferences": {
+    "81d42b29-a0bb-4881-adac-7b815b9164d6": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_teams",
+      "displayName": "Microsoft Teams",
+      "dataSources": [
+        "teams"
+      ],
+      "dataSets": {}
+    }
+  },
+  "databaseReferences": {
+    "default.cds": {
+      "dataSources": {
+        "incidents": {
+          "entitySetName": "msftirma_incidents",
+          "logicalName": "msftirma_incident"
+        },
+        "specialties": {
+          "entitySetName": "msftirma_specialties",
+          "logicalName": "msftirma_specialty"
+        },
+        "incidentspecialtytags": {
+          "entitySetName": "msftirma_incidentspecialtytags",
+          "logicalName": "msftirma_incidentspecialtytag"
+        },
+        "incidentdetails": {
+          "entitySetName": "msftirma_incidentdetails",
+          "logicalName": "msftirma_incidentdetail"
+        },
+        "incidentaudits": {
+          "entitySetName": "msftirma_incidentaudits",
+          "logicalName": "msftirma_incidentaudit"
+        },
+        "investigationactivities": {
+          "entitySetName": "msftirma_investigationactivities",
+          "logicalName": "msftirma_investigationactivity"
+        },
+        "remediationactions": {
+          "entitySetName": "msftirma_remediationactions",
+          "logicalName": "msftirma_remediationaction"
+        },
+        "users": {
+          "entitySetName": "systemusers",
+          "logicalName": "systemuser"
+        }
+      },
+      "environmentVariableName": ""
+    }
+  }
 }

@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "dataverse-carrema": {
+      "type": "stdio",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": ["${workspaceFolder}/scripts/mcp_proxy.py"]
+    }
+  }
+}
