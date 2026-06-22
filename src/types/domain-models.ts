@@ -10,6 +10,27 @@ export interface UserRef {
   email?: string;
 }
 
+/**
+ * Dataverse access right (AccessRights EnumType) used for native record sharing
+ * via GrantAccess / ModifyAccess / RevokeAccess.
+ */
+export type AccessRight =
+  | 'ReadAccess'
+  | 'WriteAccess'
+  | 'AppendAccess'
+  | 'AppendToAccess'
+  | 'CreateAccess'
+  | 'DeleteAccess'
+  | 'ShareAccess'
+  | 'AssignAccess';
+
+/** A principal the record has been shared with (Dataverse GrantAccess / POA). */
+export interface RecordShare {
+  principal: UserRef;
+  principalType: 'systemuser' | 'team';
+  access: AccessRight[];
+}
+
 // ── Enumerations (numeric option-set values mirror the Dataverse global option sets) ──
 
 export type IncidentStatus = 1 | 2; // Draft | Submitted

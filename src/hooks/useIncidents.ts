@@ -8,6 +8,7 @@ import type {
   InvestigationActivity,
   RemediationAction,
   ReporterFeedbackInput,
+  AccessRight,
 } from '@/types/domain-models';
 
 const provider = getDataProvider();
@@ -21,6 +22,7 @@ export const queryKeys = {
   audits: (incidentId: string) => ['audits', incidentId] as const,
   activities: (incidentId: string) => ['activities', incidentId] as const,
   remediations: (incidentId: string) => ['remediations', incidentId] as const,
+  shares: (incidentId: string) => ['shares', incidentId] as const,
   users: (q: string) => ['users', q] as const,
 };
 
@@ -178,6 +180,33 @@ export function useUserSearch(query: string) {
     queryKey: queryKeys.users(query),
     queryFn: () => provider.users.search(query),
     enabled: query.length >= 2,
+  });
+}
+
+// ── Record sharing (native Dataverse GrantAccess / RevokeAccess) ──
+
+export function useRecordShares(incidentId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.shares(incidentId || ''),
+    queryFn: () => (incidentId ? provider.sharing.listShares(incidentId) : Promise.resolve([])),
+    enabled: Boolean(incidentId),
+  });
+}
+
+export function useGrantShare(incidentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ principalId, access }: { principalId: string; access: AccessRight[] }) =>
+      provider.sharing.grant(incidentId, principalId, access),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.shares(incidentId) }),
+  });
+}
+
+export function useRevokeShare(incidentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (principalId: string) => provider.sharing.revoke(incidentId, principalId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.shares(incidentId) }),
   });
 }
 

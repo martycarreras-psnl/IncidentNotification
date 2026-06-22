@@ -19,6 +19,11 @@ import {
   Switch,
   MessageBar,
   MessageBarBody,
+  Accordion,
+  AccordionItem,
+  AccordionHeader,
+  AccordionPanel,
+  Spinner,
 } from '@fluentui/react-components';
 import {
   ArrowLeft20Regular,
@@ -26,6 +31,7 @@ import {
   Add20Regular,
   CheckmarkCircle20Filled,
   Delete20Regular,
+  Share20Regular,
 } from '@fluentui/react-icons';
 import { PageHeader, Surface, LoadingState, EmptyState } from '@/components/ui/Page';
 import { StatusBadge, SeverityBadge, EscalationBadge } from '@/components/incidents/StatusBadges';
@@ -46,12 +52,16 @@ import {
   useSaveRemediation,
   useRemoveRemediation,
   useSendReporterFeedback,
+  useRecordShares,
+  useGrantShare,
+  useRevokeShare,
 } from '@/hooks/useIncidents';
 import type {
   Incident,
   InvestigationStatus,
   RemediationStatus,
   UserRef,
+  AccessRight,
 } from '@/types/domain-models';
 import {
   investigationStatusLabels,
@@ -220,6 +230,7 @@ export function IncidentDetailPage() {
         <div className={styles.col}>
           <InvestigationPanel incident={incident} />
           <RemediationSection incidentId={incident.id} />
+          <ShareSection incidentId={incident.id} />
           <ReporterFeedbackCard incident={incident} />
         </div>
       </div>
@@ -489,6 +500,138 @@ function RemediationSection({ incidentId }: { incidentId: string }) {
           </div>
         ))
       )}
+    </Surface>
+  );
+}
+
+// ── Sharing (native Dataverse record sharing) ──
+
+type ShareLevel = 'read' | 'readwrite' | 'coowner';
+
+const SHARE_LEVELS: Record<ShareLevel, { label: string; access: AccessRight[] }> = {
+  read: { label: 'Read', access: ['ReadAccess'] },
+  readwrite: { label: 'Read & Write', access: ['ReadAccess', 'WriteAccess', 'AppendToAccess'] },
+  coowner: {
+    label: 'Co-owner (read, write, share, assign, delete)',
+    access: ['ReadAccess', 'WriteAccess', 'AppendAccess', 'AppendToAccess', 'ShareAccess', 'AssignAccess', 'DeleteAccess'],
+  },
+};
+
+const ACCESS_LABELS: Record<AccessRight, string> = {
+  ReadAccess: 'Read',
+  WriteAccess: 'Write',
+  AppendAccess: 'Append',
+  AppendToAccess: 'Append To',
+  CreateAccess: 'Create',
+  DeleteAccess: 'Delete',
+  ShareAccess: 'Share',
+  AssignAccess: 'Assign',
+};
+
+function describeAccess(access: AccessRight[]): string {
+  return access.map((a) => ACCESS_LABELS[a] ?? a).join(', ') || 'No access';
+}
+
+function ShareSection({ incidentId }: { incidentId: string }) {
+  const styles = useStyles();
+  const { data: shares, isLoading } = useRecordShares(incidentId);
+  const grant = useGrantShare(incidentId);
+  const revoke = useRevokeShare(incidentId);
+  const [user, setUser] = useState<UserRef | undefined>();
+  const [level, setLevel] = useState<ShareLevel>('readwrite');
+
+  const sharedIds = new Set((shares ?? []).map((s) => s.principal.id));
+  const alreadyShared = Boolean(user && sharedIds.has(user.id));
+
+  const share = async () => {
+    if (!user || alreadyShared) return;
+    await grant.mutateAsync({ principalId: user.id, access: SHARE_LEVELS[level].access });
+    setUser(undefined);
+  };
+
+  const count = shares?.length ?? 0;
+
+  return (
+    <Surface>
+      <Accordion collapsible defaultOpenItems={['share']}>
+        <AccordionItem value="share">
+          <AccordionHeader icon={<Share20Regular />}>
+            <Text className={styles.sectionTitle} style={{ marginBottom: 0 }}>
+              Sharing{count > 0 ? ` (${count})` : ''}
+            </Text>
+          </AccordionHeader>
+          <AccordionPanel>
+            <Text className={styles.muted} size={200} block style={{ marginTop: tokens.spacingVerticalXS }}>
+              Share this incident with any user via Dataverse record sharing.
+            </Text>
+
+            <div className={styles.field} style={{ marginTop: tokens.spacingVerticalS }}>
+              <DataverseFieldLabel fallback="Share with" />
+              <PeoplePicker
+                value={user}
+                onChange={setUser}
+                ariaLabel="Share with"
+                placeholder="Search people to share with…"
+              />
+              <DataverseFieldLabel fallback="Access level" />
+              <Dropdown
+                aria-label="Access level"
+                value={SHARE_LEVELS[level].label}
+                selectedOptions={[level]}
+                onOptionSelect={(_e, d) => d.optionValue && setLevel(d.optionValue as ShareLevel)}
+              >
+                {(Object.keys(SHARE_LEVELS) as ShareLevel[]).map((k) => (
+                  <Option key={k} value={k}>{SHARE_LEVELS[k].label}</Option>
+                ))}
+              </Dropdown>
+              <div>
+                <Button
+                  appearance="primary"
+                  size="small"
+                  icon={<Share20Regular />}
+                  onClick={share}
+                  disabled={!user || alreadyShared || grant.isPending}
+                >
+                  Share
+                </Button>
+              </div>
+              {alreadyShared ? (
+                <Text className={styles.muted} size={200}>Already shared with {user?.name}.</Text>
+              ) : null}
+            </div>
+
+            <Divider style={{ marginBlock: tokens.spacingVerticalS }} />
+
+            <span className={styles.factLabel}>Shared with</span>
+            {isLoading ? (
+              <Spinner size="tiny" label="Loading shares…" style={{ marginTop: tokens.spacingVerticalS }} />
+            ) : count === 0 ? (
+              <Text className={styles.muted} size={200} block style={{ marginTop: tokens.spacingVerticalXS }}>
+                Not shared with anyone yet.
+              </Text>
+            ) : (
+              (shares ?? []).map((s) => (
+                <div key={s.principal.id} className={styles.remRow}>
+                  <div style={{ minWidth: 0 }}>
+                    <Text size={300} block style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {s.principal.name}
+                    </Text>
+                    <Text className={styles.muted} size={100}>{describeAccess(s.access)}</Text>
+                  </div>
+                  <Button
+                    size="small"
+                    appearance="subtle"
+                    icon={<Delete20Regular />}
+                    aria-label={`Remove ${s.principal.name}`}
+                    onClick={() => revoke.mutate(s.principal.id)}
+                    disabled={revoke.isPending}
+                  />
+                </div>
+              ))
+            )}
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
     </Surface>
   );
 }

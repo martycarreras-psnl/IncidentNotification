@@ -11,6 +11,8 @@ import type {
   RemediationAction,
   ReporterFeedbackInput,
   UserRef,
+  RecordShare,
+  AccessRight,
 } from '@/types/domain-models';
 
 export type DataverseFieldRequiredLevel = 'none' | 'recommended' | 'application' | 'system';
@@ -91,6 +93,19 @@ export interface NotificationService {
   sendReporterFeedback(input: ReporterFeedbackInput): Promise<void>;
 }
 
+/**
+ * Native Dataverse record sharing for incidents — backed by the GrantAccess /
+ * RevokeAccess / RetrieveSharedPrincipalsAndAccess messages.
+ */
+export interface RecordSharingRepository {
+  /** All principals the incident has been shared with. */
+  listShares(incidentId: string): Promise<RecordShare[]>;
+  /** Share (or re-share) the incident with a user using the given access rights. */
+  grant(incidentId: string, principalId: string, access: AccessRight[]): Promise<void>;
+  /** Remove all sharing access for a principal. */
+  revoke(incidentId: string, principalId: string): Promise<void>;
+}
+
 export interface AppDataProvider {
   incidents: IncidentRepository;
   specialties: SpecialtyRepository;
@@ -101,5 +116,6 @@ export interface AppDataProvider {
   remediations: RemediationActionRepository;
   users: UserDirectory;
   notifications: NotificationService;
+  sharing: RecordSharingRepository;
   fieldMetadata: FieldMetadataRepository;
 }

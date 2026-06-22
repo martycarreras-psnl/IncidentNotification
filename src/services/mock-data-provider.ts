@@ -5,6 +5,7 @@ import type {
   IncidentAudit,
   IncidentSpecialtyTag,
   InvestigationActivity,
+  RecordShare,
   RemediationAction,
 } from '@/types/domain-models';
 import {
@@ -29,6 +30,7 @@ export function createMockDataProvider(): AppDataProvider {
   const audits: IncidentAudit[] = [];
   const activities = mockActivities.map(clone);
   const remediations = mockRemediations.map(clone);
+  const shares = new Map<string, RecordShare[]>();
 
   return {
     incidents: {
@@ -174,6 +176,30 @@ export function createMockDataProvider(): AppDataProvider {
       async search(query) {
         const q = query.toLowerCase();
         return mockUsers.filter((u) => !q || u.name.toLowerCase().includes(q)).map(clone);
+      },
+    },
+
+    sharing: {
+      async listShares(incidentId) {
+        return (shares.get(incidentId) ?? []).map(clone);
+      },
+      async grant(incidentId, principalId, access) {
+        const user = mockUsers.find((u) => u.id === principalId) ?? { id: principalId, name: principalId };
+        const list = shares.get(incidentId) ?? [];
+        const existing = list.find((s) => s.principal.id === principalId);
+        if (existing) {
+          existing.access = access;
+        } else {
+          list.push({ principal: clone(user), principalType: 'systemuser', access });
+        }
+        shares.set(incidentId, list);
+      },
+      async revoke(incidentId, principalId) {
+        const list = shares.get(incidentId) ?? [];
+        shares.set(
+          incidentId,
+          list.filter((s) => s.principal.id !== principalId),
+        );
       },
     },
 

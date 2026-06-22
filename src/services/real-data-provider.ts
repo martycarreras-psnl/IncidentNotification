@@ -13,6 +13,7 @@ import type {
   IncidentDetail,
   IncidentSpecialtyTag,
   InvestigationActivity,
+  RecordShare,
   RemediationAction,
   Specialty,
   UserRef,
@@ -27,6 +28,7 @@ import { Msftirma_investigationactivitiesService } from '@/generated/services/Ms
 import { Msftirma_remediationactionsService } from '@/generated/services/Msftirma_remediationactionsService';
 import { SystemusersService } from '@/generated/services/SystemusersService';
 import { MicrosoftTeamsService } from '@/generated/services/MicrosoftTeamsService';
+import { grantAccess, revokeAccess, retrieveShares } from '@/services/dataverse-sharing';
 
 // ── helpers ──
 
@@ -437,6 +439,37 @@ export function createRealDataProvider(): AppDataProvider {
         return rows<Row>(result)
           .map(mapUser)
           .filter((u) => u.name && !u.name.startsWith('#'));
+      },
+    },
+
+    sharing: {
+      async listShares(incidentId) {
+        const raw = await retrieveShares(incidentId);
+        const userIds = raw
+          .filter((r) => r.principalType === 'systemuser')
+          .map((r) => r.principalId);
+        let nameById = new Map<string, UserRef>();
+        if (userIds.length) {
+          const filter = userIds.map((id) => `systemuserid eq ${id}`).join(' or ');
+          const result = await SystemusersService.getAll({
+            select: ['systemuserid', 'fullname', 'internalemailaddress'],
+            filter,
+          });
+          nameById = new Map(rows<Row>(result).map(mapUser).map((u) => [u.id, u]));
+        }
+        return raw.map<RecordShare>((r) => ({
+          principal:
+            nameById.get(r.principalId) ??
+            { id: r.principalId, name: r.principalType === 'team' ? 'Team' : r.principalId },
+          principalType: r.principalType,
+          access: r.access,
+        }));
+      },
+      async grant(incidentId, principalId, access) {
+        await grantAccess(incidentId, principalId, access);
+      },
+      async revoke(incidentId, principalId) {
+        await revokeAccess(incidentId, principalId);
       },
     },
 
